@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản trị - WebShop</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<div class="container">
+  <h2>Trang quản trị</h2>
+  <div id="stats" class="grid" style="margin-bottom:20px"></div>
+
+  <div class="tabs">
+    <button class="active" data-tab="deposits" onclick="switchTab('deposits')">Duyệt nạp tiền</button>
+    <button data-tab="products" onclick="switchTab('products')">Sản phẩm</button>
+    <button data-tab="users" onclick="switchTab('users')">Người dùng</button>
+  </div>
+
+  <section id="tab-deposits">
+    <div style="margin-bottom:10px">
+      <select id="depositFilter" onchange="loadDeposits()">
+        <option value="pending">Chờ duyệt</option>
+        <option value="approved">Đã duyệt</option>
+        <option value="rejected">Đã từ chối</option>
+        <option value="all">Tất cả</option>
+      </select>
+    </div>
+    <table>
+      <thead><tr><th>Ngày</th><th>Người dùng</th><th>Số tiền</th><th>Phương thức</th><th>Ghi chú</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody id="depositsBody"></tbody>
+    </table>
+  </section>
+
+  <section id="tab-products" style="display:none">
+    <div class="card" style="max-width:480px;margin-bottom:16px">
+      <h3>Thêm sản phẩm mới</h3>
+      <input id="p-name" placeholder="Tên sản phẩm">
+      <input id="p-desc" placeholder="Mô tả">
+      <input id="p-price" type="number" placeholder="Giá (VNĐ)">
+      <input id="p-stock" type="number" placeholder="Số lượng kho">
+      <input id="p-image" placeholder="URL hình ảnh (tuỳ chọn)">
+      <button class="btn" onclick="addProduct()">Thêm sản phẩm</button>
+    </div>
+    <table>
+      <thead><tr><th>Tên</th><th>Giá</th><th>Kho</th><th></th></tr></thead>
+      <tbody id="productsBody"></tbody>
+    </table>
+  </section>
+
+  <section id="tab-users" style="display:none">
+    <table>
+      <thead><tr><th>Tên đăng nhập</th><th>Vai trò</th><th>Số dư</th><th>Ngày tạo</th></tr></thead>
+      <tbody id="usersBody"></tbody>
+    </table>
+  </section>
+</div>
+<script src="/js/api.js"></script>
+<script>
+API.requireAdmin();
+renderHeader();
+
+function switchTab(tab) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  ['deposits', 'products', 'users'].forEach(t => document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none');
+  if (tab === 'deposits') loadDeposits();
+  if (tab === 'products') loadProducts();
+  if (tab === 'users') loadUsers();
+}
+
+const badge = s => ({
+  pending: '<span class="badge pending">Chờ duyệt</span>',
+  approved: '<span class="badge approved">Đã duyệt</span>',
+  rejected: '<span class="badge rejected">Đã từ chối</span>'
+}[s] || s);
+
+async function loadStats() {
+  const s = await API.get('/api/admin/stats');
+  document.getElementById('stats').innerHTML = `
+    <div class="card"><div class="muted">Người dùng</div><h3>${s.totalUsers}</h3></div>
+    <div class="card"><div class="muted">Đơn hàng</div><h3>${s.totalOrders}</h3></div>
+    <div class="card"><div class="muted">Doanh thu</div><h3>${money(s.revenue)}</h3></div>
+    <div class="card"><div class="muted">Chờ duyệt nạp tiền</div><h3>${s.pendingDeposits}</h3></div>
+  `;
+}
+
+async function loadDeposits() {
+  const status = document.getElementById('depositFilter').value;
+  const { deposits } = await API.get('/api/deposits?status=' + status);
+  document.getElementById('depositsBody').innerHTML = deposits.map(d => `
+    <tr>
+      <td>${new Date(d.created_at + 'Z').toLocaleString('vi-VN')}</td>
+      <td>${d.username}</td>
+      <td>${money(d.amount)}</td>
+      <td>${d.method}</td>
+      <td class="muted">${d.note || ''}</td>
+      <td>${badge(d.status)}</td>
+      <td>
+        ${d.status === 'pending' ? `
+          <button class="btn success" onclick="approveDeposit(${d.id})">Duyệt</button>
+          <button class="btn danger" onclick="rejectDeposit(${d.id})">Từ chối</button>
+        ` : ''}
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="7" class="muted">Không có yêu cầu nào.</td></tr>';
+}
+
+async function approveDeposit(id) {
+  if (!confirm('Xác nhận duyệt yêu cầu nạp tiền này? Số dư sẽ được cộng ngay.')) return;
+  try {
+    await API.post(`/api/deposits/${id}/approve`, {});
+    toast('Đã duyệt yêu cầu.');
+    loadDeposits(); loadStats();
+  } catch (e) { toast(e.message); }
+}
+async function rejectDeposit(id) {
+  if (!confirm('Xác nhận từ chối yêu cầu này?')) return;
+  try {
+    await API.post(`/api/deposits/${id}/reject`, {});
+    toast('Đã từ chối yêu cầu.');
+    loadDeposits(); loadStats();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadProducts() {
+  const { products } = await API.get('/api/products');
+  document.getElementById('productsBody').innerHTML = products.map(p => `
+    <tr>
+      <td>${p.name}</td>
+      <td>${money(p.price)}</td>
+      <td>${p.stock}</td>
+      <td><button class="btn danger" onclick="deleteProduct(${p.id})">Xoá</button></td>
+    </tr>
+  `).join('');
+}
+
+async function addProduct() {
+  const body = {
+    name: document.getElementById('p-name').value.trim(),
+    description: document.getElementById('p-desc').value.trim(),
+    price: Number(document.getElementById('p-price').value),
+    stock: Number(document.getElementById('p-stock').value),
+    image_url: document.getElementById('p-image').value.trim()
+  };
+  if (!body.name || !body.price) { toast('Vui lòng nhập tên và giá sản phẩm.'); return; }
+  try {
+    await API.post('/api/products', body);
+    toast('Đã thêm sản phẩm.');
+    ['p-name','p-desc','p-price','p-stock','p-image'].forEach(id => document.getElementById(id).value = '');
+    loadProducts();
+  } catch (e) { toast(e.message); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Xoá sản phẩm này?')) return;
+  await API.del('/api/products/' + id);
+  loadProducts();
+}
+
+async function loadUsers() {
+  const { users } = await API.get('/api/admin/users');
+  document.getElementById('usersBody').innerHTML = users.map(u => `
+    <tr>
+      <td>${u.username}</td>
+      <td>${u.role}</td>
+      <td>${money(u.balance)}</td>
+      <td>${new Date(u.created_at + 'Z').toLocaleString('vi-VN')}</td>
+    </tr>
+  `).join('');
+}
+
+loadStats();
+loadDeposits();
+</script>
+</body>
+</html>

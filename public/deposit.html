@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nạp tiền - WebShop</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header id="site-header"></header>
+<div class="container">
+  <h2>Nạp tiền vào tài khoản</h2>
+  <div class="card" style="max-width:420px">
+    <p class="muted">Sau khi chuyển khoản, hãy điền thông tin bên dưới. Yêu cầu sẽ được admin duyệt và số dư sẽ được cộng sau khi duyệt.</p>
+    <input id="amount" type="number" min="1000" step="1000" placeholder="Số tiền (VNĐ)" required>
+    <select id="method">
+      <option value="bank_transfer">Chuyển khoản ngân hàng</option>
+      <option value="momo">Ví MoMo</option>
+      <option value="zalopay">ZaloPay</option>
+      <option value="other">Khác</option>
+    </select>
+    <textarea id="note" placeholder="Ghi chú (VD: mã giao dịch, số tài khoản đã chuyển...)"></textarea>
+    <button class="btn" onclick="submitDeposit()">Gửi yêu cầu nạp tiền</button>
+  </div>
+
+  <h2>Lịch sử yêu cầu</h2>
+  <table id="history">
+    <thead><tr><th>Ngày</th><th>Số tiền</th><th>Phương thức</th><th>Trạng thái</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+<script src="/js/api.js"></script>
+<script>
+API.requireLogin();
+renderHeader();
+
+async function submitDeposit() {
+  const amount = Number(document.getElementById('amount').value);
+  const method = document.getElementById('method').value;
+  const note = document.getElementById('note').value;
+  if (!amount || amount <= 0) { toast('Vui lòng nhập số tiền hợp lệ.'); return; }
+  try {
+    await API.post('/api/deposits', { amount, method, note });
+    toast('Đã gửi yêu cầu, vui lòng chờ admin duyệt.');
+    document.getElementById('amount').value = '';
+    document.getElementById('note').value = '';
+    loadHistory();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+const badge = s => ({
+  pending: '<span class="badge pending">Chờ duyệt</span>',
+  approved: '<span class="badge approved">Đã duyệt</span>',
+  rejected: '<span class="badge rejected">Đã từ chối</span>'
+}[s] || s);
+
+async function loadHistory() {
+  const { deposits } = await API.get('/api/deposits/me');
+  document.querySelector('#history tbody').innerHTML = deposits.map(d => `
+    <tr>
+      <td>${new Date(d.created_at + 'Z').toLocaleString('vi-VN')}</td>
+      <td>${money(d.amount)}</td>
+      <td>${d.method}</td>
+      <td>${badge(d.status)}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" class="muted">Chưa có yêu cầu nào.</td></tr>';
+}
+loadHistory();
+</script>
+</body>
+</html>
