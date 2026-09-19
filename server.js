@@ -8,6 +8,15 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
+// Tự tạo tài khoản admin + sản phẩm mẫu nếu database còn trống.
+// Chạy ngay trong tiến trình server (không tách process riêng) để tránh
+// lỗi crash native module khi Render chạy "npm run seed" như bước build tách biệt.
+try {
+  require('./seed')();
+} catch (e) {
+  console.error('⚠ Lỗi khi seed dữ liệu ban đầu:', e.message);
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());

@@ -1,18 +1,17 @@
-require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const db = require('./db');
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123456';
+function seed() {
+  const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@123456';
 
-function run() {
   const existing = db.prepare('SELECT * FROM users WHERE username = ?').get(ADMIN_USERNAME);
   if (!existing) {
     const hash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
     db.prepare(
       'INSERT INTO users (username, password_hash, balance, role) VALUES (?, ?, ?, ?)'
     ).run(ADMIN_USERNAME, hash, 0, 'admin');
-    console.log(`✔ Đã tạo tài khoản admin: ${ADMIN_USERNAME} / ${ADMIN_PASSWORD}`);
+    console.log(`✔ Đã tạo tài khoản admin: ${ADMIN_USERNAME}`);
   } else {
     console.log('ℹ Tài khoản admin đã tồn tại, bỏ qua.');
   }
@@ -36,4 +35,10 @@ function run() {
   }
 }
 
-run();
+module.exports = seed;
+
+// Vẫn cho phép chạy độc lập: node seed.js (dùng khi test ở máy local)
+if (require.main === module) {
+  require('dotenv').config();
+  seed();
+}

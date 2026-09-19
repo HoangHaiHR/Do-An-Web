@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Website bán hàng online - đăng nhập, database người dùng, nạp tiền duyệt bởi admin",
   "main": "server.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "start": "node server.js",
     "seed": "node seed.js"
