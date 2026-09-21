@@ -8,11 +8,17 @@
 </head>
 <body>
 <header id="site-header"></header>
-<div class="container">
-  <h2>Sản phẩm</h2>
+
+<div class="hero container" style="padding-bottom:0; margin-bottom:0; border-bottom:none;">
+  <h1>Đồ dùng hàng ngày,<br>chọn kỹ từng món.</h1>
+  <p class="tagline">Áo, quần, giày, túi và mũ — những thứ bạn mặc mỗi ngày, chọn lọc kỹ về chất liệu và độ bền.</p>
+</div>
+
+<div class="container" style="padding-top:0">
+  <div id="chips" class="chips"></div>
   <div id="products" class="grid">Đang tải...</div>
 
-  <h2 id="cart-title" style="display:none">Giỏ hàng</h2>
+  <h2 id="cart-title" style="display:none; margin-top:36px">Giỏ hàng</h2>
   <div id="cart" class="card" style="display:none"></div>
 </div>
 
@@ -20,7 +26,9 @@
 <script>
 renderHeader('shop');
 
-let cart = JSON.parse(sessionStorage.getItem('cart') || '{}'); // {product_id: qty}
+let allProducts = [];
+let activeCategory = 'Tất cả';
+let cart = JSON.parse(sessionStorage.getItem('cart') || '{}');
 
 function saveCart() {
   sessionStorage.setItem('cart', JSON.stringify(cart));
@@ -30,37 +38,70 @@ function saveCart() {
 async function loadProducts() {
   try {
     const { products } = await API.get('/api/products');
-    const el = document.getElementById('products');
-    if (products.length === 0) { el.innerHTML = '<p class="muted">Chưa có sản phẩm nào.</p>'; return; }
-    el.innerHTML = products.map(p => `
-      <div class="card product-card">
-        <img src="${p.image_url || 'https://placehold.co/300x200?text=' + encodeURIComponent(p.name)}" alt="${p.name}">
-        <h3>${p.name}</h3>
-        <p class="muted">${p.description || ''}</p>
-        <p class="price">${money(p.price)}</p>
-        <p class="muted">Còn ${p.stock} sản phẩm</p>
-        <div class="qty-box">
-          <input type="number" min="1" max="${p.stock}" value="1" id="qty-${p.id}">
-          <button class="btn" ${p.stock === 0 ? 'disabled' : ''} onclick="addToCart('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, ${p.stock})">Thêm vào giỏ</button>
-        </div>
-      </div>
-    `).join('');
+    allProducts = products;
+    renderChips();
+    renderProducts();
   } catch (e) {
     toast(e.message);
   }
 }
 
+function renderChips() {
+  const cats = ['Tất cả', ...new Set(allProducts.map(p => p.category || 'Khác'))];
+  document.getElementById('chips').innerHTML = cats.map(c => `
+    <button class="chip ${c === activeCategory ? 'active' : ''}" onclick="setCategory('${c}')">${c}</button>
+  `).join('');
+}
+
+function setCategory(c) {
+  activeCategory = c;
+  renderChips();
+  renderProducts();
+}
+
+function renderProducts() {
+  const el = document.getElementById('products');
+  const list = activeCategory === 'Tất cả' ? allProducts : allProducts.filter(p => (p.category || 'Khác') === activeCategory);
+  if (list.length === 0) { el.innerHTML = '<p class="muted">Chưa có sản phẩm nào trong danh mục này.</p>'; return; }
+
+  el.innerHTML = list.map(p => `
+    <div class="product-card">
+      <div class="product-media">
+        <img src="${p.image_url || 'https://placehold.co/500x500/ece8dd/6e6b7a?text=' + encodeURIComponent(p.name)}" alt="${p.name}" loading="lazy">
+        ${p.stock <= 5 && p.stock > 0 ? `<span class="stock-badge">Còn ${p.stock}</span>` : ''}
+        ${p.stock === 0 ? `<span class="stock-badge">Hết hàng</span>` : ''}
+        <span class="category-tag">${p.category || 'Khác'}</span>
+        <button class="add-fab" ${p.stock === 0 ? 'disabled' : ''} onclick="addToCart('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, ${p.stock})" title="Thêm vào giỏ">+</button>
+      </div>
+      <div class="product-body">
+        <h3>${p.name}</h3>
+        <p class="product-desc" onclick="this.classList.toggle('expanded')">${p.description || ''}</p>
+        <div class="product-footer">
+          <span class="price">${money(p.price)}</span>
+          <span class="stock-note">${p.stock > 0 ? p.stock + ' còn lại' : ''}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
 function addToCart(id, name, price, stock) {
   if (!API.token()) { location.href = '/login.html'; return; }
-  const qtyInput = document.getElementById('qty-' + id);
-  const qty = Math.max(1, Math.min(stock, parseInt(qtyInput.value, 10) || 1));
-  cart[id] = { qty, name, price };
+  const existingQty = cart[id] ? cart[id].qty : 0;
+  if (existingQty + 1 > stock) { toast('Đã đạt số lượng tối đa trong kho.'); return; }
+  cart[id] = { qty: existingQty + 1, name, price };
   saveCart();
-  toast('Đã thêm vào giỏ hàng.');
+  toast(`Đã thêm "${name}" vào giỏ.`);
 }
 
 function removeFromCart(id) {
   delete cart[id];
+  saveCart();
+}
+
+function changeQty(id, delta) {
+  if (!cart[id]) return;
+  cart[id].qty = Math.max(1, cart[id].qty + delta);
   saveCart();
 }
 
@@ -77,7 +118,13 @@ function renderCart() {
     total += item.qty * item.price;
     return `<tr>
       <td>${item.name}</td>
-      <td>${item.qty}</td>
+      <td>
+        <div class="qty-box">
+          <button class="btn secondary" style="padding:4px 10px" onclick="changeQty('${id}',-1)">−</button>
+          ${item.qty}
+          <button class="btn secondary" style="padding:4px 10px" onclick="changeQty('${id}',1)">+</button>
+        </div>
+      </td>
       <td>${money(item.price)}</td>
       <td>${money(item.qty * item.price)}</td>
       <td><button class="btn danger" onclick="removeFromCart('${id}')">Xoá</button></td>
@@ -88,14 +135,14 @@ function renderCart() {
       <thead><tr><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <p style="text-align:right;font-weight:700;margin-top:10px">Tổng cộng: ${money(total)}</p>
+    <p style="text-align:right;font-weight:700;margin-top:14px;font-family:var(--font-display);font-size:18px">Tổng cộng: ${money(total)}</p>
     <div style="text-align:right"><button class="btn success" onclick="checkout()">Đặt hàng</button></div>
   `;
 }
 
 async function checkout() {
   const items = Object.entries(cart).map(([product_id, v]) => ({
-    product_id: product_id, quantity: v.qty
+    product_id, quantity: v.qty
   }));
   try {
     await API.post('/api/orders', { items });

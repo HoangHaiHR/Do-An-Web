@@ -37,14 +37,17 @@
     <div class="card" style="max-width:480px;margin-bottom:16px">
       <h3>Thêm sản phẩm mới</h3>
       <input id="p-name" placeholder="Tên sản phẩm">
-      <input id="p-desc" placeholder="Mô tả">
+      <input id="p-desc" placeholder="Mô tả sản phẩm">
+      <input id="p-category" placeholder="Danh mục (VD: Áo, Quần, Giày...)">
       <input id="p-price" type="number" placeholder="Giá (VNĐ)">
       <input id="p-stock" type="number" placeholder="Số lượng kho">
-      <input id="p-image" placeholder="URL hình ảnh (tuỳ chọn)">
+      <input id="p-image" placeholder="URL hình ảnh" oninput="previewImage(this.value)">
+      <img id="p-preview" style="display:none;width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:12px" alt="Xem trước ảnh">
       <button class="btn" onclick="addProduct()">Thêm sản phẩm</button>
+      <p class="muted" style="margin-top:8px">Dán link ảnh trực tiếp (đuôi .jpg/.png/.webp). Có thể lấy link ảnh bằng cách tải lên <a href="https://imgur.com/upload" target="_blank">imgur.com</a> rồi bấm chuột phải vào ảnh → "Copy image address".</p>
     </div>
     <table>
-      <thead><tr><th>Tên</th><th>Giá</th><th>Kho</th><th></th></tr></thead>
+      <thead><tr><th>Ảnh</th><th>Tên</th><th>Danh mục</th><th>Giá</th><th>Kho</th><th></th></tr></thead>
       <tbody id="productsBody"></tbody>
     </table>
   </section>
@@ -127,7 +130,9 @@ async function loadProducts() {
   const { products } = await API.get('/api/products');
   document.getElementById('productsBody').innerHTML = products.map(p => `
     <tr>
+      <td><img src="${p.image_url || 'https://placehold.co/60x60/ece8dd/6e6b7a?text=?'}" style="width:44px;height:44px;object-fit:cover;border-radius:6px"></td>
       <td>${p.name}</td>
+      <td>${p.category || 'Khác'}</td>
       <td>${money(p.price)}</td>
       <td>${p.stock}</td>
       <td><button class="btn danger" onclick="deleteProduct('${p.id}')">Xoá</button></td>
@@ -135,10 +140,18 @@ async function loadProducts() {
   `).join('');
 }
 
+function previewImage(url) {
+  const img = document.getElementById('p-preview');
+  if (!url) { img.style.display = 'none'; return; }
+  img.src = url;
+  img.style.display = 'block';
+}
+
 async function addProduct() {
   const body = {
     name: document.getElementById('p-name').value.trim(),
     description: document.getElementById('p-desc').value.trim(),
+    category: document.getElementById('p-category').value.trim() || 'Khác',
     price: Number(document.getElementById('p-price').value),
     stock: Number(document.getElementById('p-stock').value),
     image_url: document.getElementById('p-image').value.trim()
@@ -147,7 +160,8 @@ async function addProduct() {
   try {
     await API.post('/api/products', body);
     toast('Đã thêm sản phẩm.');
-    ['p-name','p-desc','p-price','p-stock','p-image'].forEach(id => document.getElementById(id).value = '');
+    ['p-name','p-desc','p-category','p-price','p-stock','p-image'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('p-preview').style.display = 'none';
     loadProducts();
   } catch (e) { toast(e.message); }
 }

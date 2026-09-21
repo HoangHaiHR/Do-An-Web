@@ -18,11 +18,46 @@ async function seed() {
   const count = await Product.countDocuments();
   if (count === 0) {
     await Product.insertMany([
-      { name: 'Áo thun basic', description: 'Áo thun cotton 100%, nhiều màu', price: 150000, stock: 50 },
-      { name: 'Quần jean slimfit', description: 'Quần jean nam/nữ dáng slimfit', price: 350000, stock: 30 },
-      { name: 'Giày sneaker trắng', description: 'Giày sneaker phong cách tối giản', price: 650000, stock: 20 },
-      { name: 'Túi tote canvas', description: 'Túi tote vải canvas bền đẹp', price: 120000, stock: 40 },
-      { name: 'Mũ lưỡi trai', description: 'Mũ lưỡi trai unisex', price: 90000, stock: 60 }
+      {
+        name: 'Áo thun basic',
+        description: 'Áo thun cotton 100%, form rộng vừa, mềm mịn và thấm hút tốt. Phù hợp mặc hàng ngày hoặc phối đồ streetwear.',
+        category: 'Áo',
+        price: 150000,
+        stock: 50,
+        image_url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&q=80'
+      },
+      {
+        name: 'Quần jean slimfit',
+        description: 'Quần jean dáng slimfit, chất denim co giãn nhẹ, dễ phối cùng giày sneaker hoặc boots.',
+        category: 'Quần',
+        price: 350000,
+        stock: 30,
+        image_url: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=800&q=80'
+      },
+      {
+        name: 'Giày sneaker trắng',
+        description: 'Giày sneaker phong cách tối giản, đế cao su bền, dễ kết hợp với hầu hết trang phục hàng ngày.',
+        category: 'Giày',
+        price: 650000,
+        stock: 20,
+        image_url: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&q=80'
+      },
+      {
+        name: 'Túi tote canvas',
+        description: 'Túi tote vải canvas dày dặn, quai đeo chắc chắn, đủ rộng để đựng laptop 13-14 inch.',
+        category: 'Túi',
+        price: 120000,
+        stock: 40,
+        image_url: 'https://images.unsplash.com/photo-1591561954557-26941169b49e?w=800&q=80'
+      },
+      {
+        name: 'Mũ lưỡi trai',
+        description: 'Mũ lưỡi trai unisex, có khoá điều chỉnh phía sau, phù hợp cả nam và nữ.',
+        category: 'Mũ',
+        price: 90000,
+        stock: 60,
+        image_url: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=800&q=80'
+      }
     ]);
     console.log('✔ Đã tạo sản phẩm mẫu.');
   } else {
