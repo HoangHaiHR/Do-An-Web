@@ -23,7 +23,7 @@ async function load() {
   if (orders.length === 0) { el.innerHTML = '<p class="muted">Bạn chưa có đơn hàng nào.</p>'; return; }
   el.innerHTML = orders.map(o => `
     <div class="card" style="margin-bottom:12px">
-      <p><b>Đơn #${o.id}</b> · ${new Date(o.created_at + 'Z').toLocaleString('vi-VN')} · Tổng: <span class="price">${money(o.total)}</span></p>
+      <p><b>Đơn #${o.id}</b> · ${new Date(o.created_at).toLocaleString('vi-VN')} · Tổng: <span class="price">${money(o.total)}</span></p>
       <table>
         <thead><tr><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th></tr></thead>
         <tbody>

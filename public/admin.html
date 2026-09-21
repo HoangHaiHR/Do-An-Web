@@ -90,7 +90,7 @@ async function loadDeposits() {
   const { deposits } = await API.get('/api/deposits?status=' + status);
   document.getElementById('depositsBody').innerHTML = deposits.map(d => `
     <tr>
-      <td>${new Date(d.created_at + 'Z').toLocaleString('vi-VN')}</td>
+      <td>${new Date(d.created_at).toLocaleString('vi-VN')}</td>
       <td>${d.username}</td>
       <td>${money(d.amount)}</td>
       <td>${d.method}</td>
@@ -165,7 +165,7 @@ async function loadUsers() {
       <td>${u.username}</td>
       <td>${u.role}</td>
       <td>${money(u.balance)}</td>
-      <td>${new Date(u.created_at + 'Z').toLocaleString('vi-VN')}</td>
+      <td>${new Date(u.created_at).toLocaleString('vi-VN')}</td>
     </tr>
   `).join('');
 }

@@ -60,7 +60,7 @@ async function loadHistory() {
   const { deposits } = await API.get('/api/deposits/me');
   document.querySelector('#history tbody').innerHTML = deposits.map(d => `
     <tr>
-      <td>${new Date(d.created_at + 'Z').toLocaleString('vi-VN')}</td>
+      <td>${new Date(d.created_at).toLocaleString('vi-VN')}</td>
       <td>${money(d.amount)}</td>
       <td>${d.method}</td>
       <td>${badge(d.status)}</td>
