@@ -1,23 +1,29 @@
 const express = require('express');
-const db = require('../db');
+const User = require('../models/User');
+const Order = require('../models/Order');
+const Deposit = require('../models/Deposit');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/users', requireAuth, requireAdmin, (req, res) => {
-  const users = db
-    .prepare('SELECT id, username, role, balance, created_at FROM users ORDER BY id DESC')
-    .all();
+router.get('/users', requireAuth, requireAdmin, async (req, res) => {
+  const users = await User.find().sort({ created_at: -1 });
   res.json({ users });
 });
 
-router.get('/stats', requireAuth, requireAdmin, (req, res) => {
-  const totalUsers = db.prepare('SELECT COUNT(*) c FROM users').get().c;
-  const totalOrders = db.prepare('SELECT COUNT(*) c FROM orders').get().c;
-  const revenue = db.prepare("SELECT COALESCE(SUM(total),0) s FROM orders").get().s;
-  const pendingDeposits = db
-    .prepare("SELECT COUNT(*) c FROM deposits WHERE status='pending'").get().c;
-  res.json({ totalUsers, totalOrders, revenue, pendingDeposits });
+router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
+  const [totalUsers, totalOrders, pendingDeposits, revenueAgg] = await Promise.all([
+    User.countDocuments(),
+    Order.countDocuments(),
+    Deposit.countDocuments({ status: 'pending' }),
+    Order.aggregate([{ $group: { _id: null, sum: { $sum: '$total' } } }])
+  ]);
+  res.json({
+    totalUsers,
+    totalOrders,
+    revenue: revenueAgg[0]?.sum || 0,
+    pendingDeposits
+  });
 });
 
 module.exports = router;

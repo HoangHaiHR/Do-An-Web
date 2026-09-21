@@ -1,51 +1,45 @@
 const express = require('express');
-const db = require('../db');
+const Product = require('../models/Product');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Công khai - ai cũng xem được danh sách sản phẩm
-router.get('/', (req, res) => {
-  const products = db.prepare('SELECT * FROM products ORDER BY id DESC').all();
+router.get('/', async (req, res) => {
+  const products = await Product.find().sort({ created_at: -1 });
   res.json({ products });
 });
 
-// Admin: thêm sản phẩm
-router.post('/', requireAuth, requireAdmin, (req, res) => {
+router.post('/', requireAuth, requireAdmin, async (req, res) => {
   const { name, description, price, stock, image_url } = req.body;
   if (!name || price == null || price < 0) {
     return res.status(400).json({ error: 'Thiếu tên hoặc giá sản phẩm không hợp lệ.' });
   }
-  const result = db
-    .prepare(
-      'INSERT INTO products (name, description, price, stock, image_url) VALUES (?, ?, ?, ?, ?)'
-    )
-    .run(name, description || '', Math.round(price), Math.max(0, stock || 0), image_url || '');
-  res.json({ id: result.lastInsertRowid });
+  const product = await Product.create({
+    name,
+    description: description || '',
+    price: Math.round(price),
+    stock: Math.max(0, stock || 0),
+    image_url: image_url || ''
+  });
+  res.json({ id: product.id });
 });
 
-// Admin: sửa sản phẩm
-router.put('/:id', requireAuth, requireAdmin, (req, res) => {
-  const { name, description, price, stock, image_url } = req.body;
-  const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
+  const existing = await Product.findById(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Không tìm thấy sản phẩm.' });
 
-  db.prepare(
-    'UPDATE products SET name=?, description=?, price=?, stock=?, image_url=? WHERE id=?'
-  ).run(
-    name ?? existing.name,
-    description ?? existing.description,
-    price != null ? Math.round(price) : existing.price,
-    stock != null ? Math.max(0, stock) : existing.stock,
-    image_url ?? existing.image_url,
-    req.params.id
-  );
+  const { name, description, price, stock, image_url } = req.body;
+  if (name != null) existing.name = name;
+  if (description != null) existing.description = description;
+  if (price != null) existing.price = Math.round(price);
+  if (stock != null) existing.stock = Math.max(0, stock);
+  if (image_url != null) existing.image_url = image_url;
+  await existing.save();
   res.json({ ok: true });
 });
 
-// Admin: xoá sản phẩm
-router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
-  db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
+router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
+  await Product.findByIdAndDelete(req.params.id);
   res.json({ ok: true });
 });
 

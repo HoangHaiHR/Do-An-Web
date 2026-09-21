@@ -41,7 +41,7 @@ async function loadProducts() {
         <p class="muted">Còn ${p.stock} sản phẩm</p>
         <div class="qty-box">
           <input type="number" min="1" max="${p.stock}" value="1" id="qty-${p.id}">
-          <button class="btn" ${p.stock === 0 ? 'disabled' : ''} onclick="addToCart(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.price}, ${p.stock})">Thêm vào giỏ</button>
+          <button class="btn" ${p.stock === 0 ? 'disabled' : ''} onclick="addToCart('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, ${p.stock})">Thêm vào giỏ</button>
         </div>
       </div>
     `).join('');
@@ -80,7 +80,7 @@ function renderCart() {
       <td>${item.qty}</td>
       <td>${money(item.price)}</td>
       <td>${money(item.qty * item.price)}</td>
-      <td><button class="btn danger" onclick="removeFromCart(${id})">Xoá</button></td>
+      <td><button class="btn danger" onclick="removeFromCart('${id}')">Xoá</button></td>
     </tr>`;
   }).join('');
   cartEl.innerHTML = `
@@ -95,7 +95,7 @@ function renderCart() {
 
 async function checkout() {
   const items = Object.entries(cart).map(([product_id, v]) => ({
-    product_id: Number(product_id), quantity: v.qty
+    product_id: product_id, quantity: v.qty
   }));
   try {
     await API.post('/api/orders', { items });

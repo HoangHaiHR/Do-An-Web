@@ -98,8 +98,8 @@ async function loadDeposits() {
       <td>${badge(d.status)}</td>
       <td>
         ${d.status === 'pending' ? `
-          <button class="btn success" onclick="approveDeposit(${d.id})">Duyệt</button>
-          <button class="btn danger" onclick="rejectDeposit(${d.id})">Từ chối</button>
+          <button class="btn success" onclick="approveDeposit('${d.id}')">Duyệt</button>
+          <button class="btn danger" onclick="rejectDeposit('${d.id}')">Từ chối</button>
         ` : ''}
       </td>
     </tr>
@@ -130,7 +130,7 @@ async function loadProducts() {
       <td>${p.name}</td>
       <td>${money(p.price)}</td>
       <td>${p.stock}</td>
-      <td><button class="btn danger" onclick="deleteProduct(${p.id})">Xoá</button></td>
+      <td><button class="btn danger" onclick="deleteProduct('${p.id}')">Xoá</button></td>
     </tr>
   `).join('');
 }

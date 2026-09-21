@@ -2,19 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const connectDB = require('./db');
+const seed = require('./seed');
 
 if (!process.env.JWT_SECRET) {
   console.error('⚠ Thiếu JWT_SECRET trong file .env — hãy tạo file .env từ .env.example');
   process.exit(1);
-}
-
-// Tự tạo tài khoản admin + sản phẩm mẫu nếu database còn trống.
-// Chạy ngay trong tiến trình server (không tách process riêng) để tránh
-// lỗi crash native module khi Render chạy "npm run seed" như bước build tách biệt.
-try {
-  require('./seed')();
-} catch (e) {
-  console.error('⚠ Lỗi khi seed dữ liệu ban đầu:', e.message);
 }
 
 const app = express();
@@ -33,4 +26,14 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✔ Server đang chạy tại http://localhost:${PORT}`));
+
+async function start() {
+  await connectDB();
+  await seed().catch((e) => console.error('⚠ Lỗi khi seed dữ liệu ban đầu:', e.message));
+  app.listen(PORT, () => console.log(`✔ Server đang chạy tại http://localhost:${PORT}`));
+}
+
+start().catch((e) => {
+  console.error('✖ Không thể khởi động server:', e.message);
+  process.exit(1);
+});
