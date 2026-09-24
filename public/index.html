@@ -25,13 +25,20 @@
 <script src="/js/api.js"></script>
 <script>
 renderHeader('shop');
+sessionStorage.removeItem('cart'); // dọn dữ liệu giỏ hàng cũ dùng key chung (bản trước khi sửa lỗi)
 
 let allProducts = [];
 let activeCategory = 'Tất cả';
-let cart = JSON.parse(sessionStorage.getItem('cart') || '{}');
+
+function cartKey() {
+  const u = API.user();
+  return u ? 'cart_' + u.id : 'cart_guest';
+}
+
+let cart = JSON.parse(sessionStorage.getItem(cartKey()) || '{}');
 
 function saveCart() {
-  sessionStorage.setItem('cart', JSON.stringify(cart));
+  sessionStorage.setItem(cartKey(), JSON.stringify(cart));
   renderCart();
 }
 
