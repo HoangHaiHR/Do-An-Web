@@ -35,7 +35,7 @@
 
   <section id="tab-products" style="display:none">
     <div class="card" style="max-width:480px;margin-bottom:16px">
-      <h3>Thêm sản phẩm mới</h3>
+      <h3 id="p-form-title">Thêm sản phẩm mới</h3>
       <input id="p-name" placeholder="Tên sản phẩm">
       <input id="p-desc" placeholder="Mô tả sản phẩm">
       <input id="p-category" placeholder="Danh mục (VD: Áo, Quần, Giày...)">
@@ -43,7 +43,8 @@
       <input id="p-stock" type="number" placeholder="Số lượng kho">
       <input id="p-image" placeholder="URL hình ảnh" oninput="previewImage(this.value)">
       <img id="p-preview" style="display:none;width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-bottom:12px" alt="Xem trước ảnh">
-      <button class="btn" onclick="addProduct()">Thêm sản phẩm</button>
+      <button class="btn" id="p-submit-btn" onclick="saveProduct()">Thêm sản phẩm</button>
+      <button class="btn secondary" id="p-cancel-btn" onclick="cancelEdit()" style="display:none">Huỷ</button>
       <p class="muted" style="margin-top:8px">Dán link ảnh trực tiếp (đuôi .jpg/.png/.webp). Có thể lấy link ảnh bằng cách tải lên <a href="https://imgur.com/upload" target="_blank">imgur.com</a> rồi bấm chuột phải vào ảnh → "Copy image address".</p>
     </div>
     <table>
@@ -126,8 +127,12 @@ async function rejectDeposit(id) {
   } catch (e) { toast(e.message); }
 }
 
+let editingProductId = null;
+let productsCache = [];
+
 async function loadProducts() {
   const { products } = await API.get('/api/products');
+  productsCache = products;
   document.getElementById('productsBody').innerHTML = products.map(p => `
     <tr>
       <td><img src="${p.image_url || 'https://placehold.co/60x60/ece8dd/6e6b7a?text=?'}" style="width:44px;height:44px;object-fit:cover;border-radius:6px"></td>
@@ -135,9 +140,38 @@ async function loadProducts() {
       <td>${p.category || 'Khác'}</td>
       <td>${money(p.price)}</td>
       <td>${p.stock}</td>
-      <td><button class="btn danger" onclick="deleteProduct('${p.id}')">Xoá</button></td>
+      <td>
+        <button class="btn secondary" onclick="startEdit('${p.id}')">Sửa</button>
+        <button class="btn danger" onclick="deleteProduct('${p.id}')">Xoá</button>
+      </td>
     </tr>
   `).join('');
+}
+
+function startEdit(id) {
+  const p = productsCache.find(x => x.id === id);
+  if (!p) return;
+  editingProductId = id;
+  document.getElementById('p-name').value = p.name;
+  document.getElementById('p-desc').value = p.description || '';
+  document.getElementById('p-category').value = p.category || '';
+  document.getElementById('p-price').value = p.price;
+  document.getElementById('p-stock').value = p.stock;
+  document.getElementById('p-image').value = p.image_url || '';
+  previewImage(p.image_url || '');
+  document.getElementById('p-form-title').textContent = `Sửa sản phẩm: ${p.name}`;
+  document.getElementById('p-submit-btn').textContent = 'Cập nhật sản phẩm';
+  document.getElementById('p-cancel-btn').style.display = 'inline-block';
+  document.querySelector('#tab-products .card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  editingProductId = null;
+  ['p-name','p-desc','p-category','p-price','p-stock','p-image'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('p-preview').style.display = 'none';
+  document.getElementById('p-form-title').textContent = 'Thêm sản phẩm mới';
+  document.getElementById('p-submit-btn').textContent = 'Thêm sản phẩm';
+  document.getElementById('p-cancel-btn').style.display = 'none';
 }
 
 function previewImage(url) {
@@ -147,7 +181,7 @@ function previewImage(url) {
   img.style.display = 'block';
 }
 
-async function addProduct() {
+async function saveProduct() {
   const body = {
     name: document.getElementById('p-name').value.trim(),
     description: document.getElementById('p-desc').value.trim(),
@@ -158,10 +192,14 @@ async function addProduct() {
   };
   if (!body.name || !body.price) { toast('Vui lòng nhập tên và giá sản phẩm.'); return; }
   try {
-    await API.post('/api/products', body);
-    toast('Đã thêm sản phẩm.');
-    ['p-name','p-desc','p-category','p-price','p-stock','p-image'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('p-preview').style.display = 'none';
+    if (editingProductId) {
+      await API.put('/api/products/' + editingProductId, body);
+      toast('Đã cập nhật sản phẩm.');
+    } else {
+      await API.post('/api/products', body);
+      toast('Đã thêm sản phẩm.');
+    }
+    cancelEdit();
     loadProducts();
   } catch (e) { toast(e.message); }
 }
